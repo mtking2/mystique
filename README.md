@@ -75,11 +75,13 @@ Keep the body tight (~150 words) — it is injected every turn. Or just run `/ro
 
 ## Statusline (optional)
 
-Add the active form to your own statusline by calling the segment helper:
+Add the active form to your own statusline by calling the segment helper. From a statusline command, invoke it with the plugin root Claude Code provides:
 
 ```
-node ~/.claude/plugins/.../mystique/bin/mystique-segment.js
+node "${CLAUDE_PLUGIN_ROOT}/bin/mystique-segment.js"
 ```
+
+(Outside a plugin context, point at the installed path, e.g. `~/.claude/plugins/marketplaces/mystique/mystique/bin/mystique-segment.js`.)
 
 It prints e.g. `🛡️ Security +💎 Rails`, or nothing when no form is active.
 

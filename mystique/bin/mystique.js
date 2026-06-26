@@ -29,13 +29,16 @@ function cmdStack(name) {
   if (!name) fail('Usage: mystique stack <form>');
   const f = resolveForm(name);
   if (!f) fail(`No form "${name}". Run \`mystique list\` to see available forms.`);
+  const already = state.readState().active.some(x => x.name === name);
   try {
     state.addStack(name, f.meta.label || '');
   } catch (e) {
     fail(e.message);
   }
   syncSpinner();
-  process.stdout.write(`Stacked ${name}. Active: ${state.readState().active.map(x => x.name).join(' + ')}.\n`);
+  const active = state.readState().active.map(x => x.name).join(' + ');
+  const verb = already ? `${name} already active` : `Stacked ${name}`;
+  process.stdout.write(`${verb}. Active: ${active}.\n`);
 }
 
 function cmdClear() {
