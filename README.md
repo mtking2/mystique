@@ -1,4 +1,4 @@
-# mystique
+# 🎭 mystique
 
 > Shapeshift Claude Code into any **role** — instantly, mid-session, no restart.
 
