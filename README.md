@@ -36,6 +36,53 @@ Early development.
 | `/role create` | Guided authoring wizard |
 | `/role edit <name>` | Edit a form file |
 
+## Install
+
+1. Add the marketplace and install the plugin (Claude Code):
+   ```
+   /plugin marketplace add mtking2/mystique
+   /plugin install mystique@mystique
+   ```
+2. Copy the example forms into your global roles dir (or a project's `./.claude/roles/`):
+   ```
+   mkdir -p ~/.claude/roles && cp roles/*.md ~/.claude/roles/
+   ```
+
+## Authoring a form
+
+A form is a markdown file in `~/.claude/roles/` (global) or `./.claude/roles/` (project — wins on name collision). Flat frontmatter + a markdown body:
+
+```markdown
+---
+name: my-role
+description: One line.
+label: 🎭 My Role          # optional, statusline
+tool_prefer: [Read, Grep]  # optional, advisory
+tool_avoid: [Bash]         # optional, advisory
+triggers: [keyword]        # optional, soft suggestions
+spinner: [Doing]           # optional, spinner verbs
+---
+
+## Principles
+- ...
+## Output style
+- ...
+## Focus
+- In: ... / Out: ...
+```
+
+Keep the body tight (~150 words) — it is injected every turn. Or just run `/role create` for a guided wizard.
+
+## Statusline (optional)
+
+Add the active form to your own statusline by calling the segment helper:
+
+```
+node ~/.claude/plugins/.../mystique/bin/mystique-segment.js
+```
+
+It prints e.g. `🛡️ Security +💎 Rails`, or nothing when no form is active.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
