@@ -25,7 +25,8 @@ test('applySpinner writes verbs and snapshots prior absent key; restore removes 
   const dir = freshClaude();
   fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify({ model: 'opus' }));
   spinner.applySpinner(['Hardening', 'Auditing']);
-  assert.deepStrictEqual(readSettings(dir).spinnerVerbs, ['Hardening', 'Auditing']);
+  // Claude Code schema: spinnerVerbs is an OBJECT { verbs, mode }, not a bare array.
+  assert.deepStrictEqual(readSettings(dir).spinnerVerbs, { verbs: ['Hardening', 'Auditing'], mode: 'replace' });
   assert.strictEqual(readSettings(dir).model, 'opus'); // other keys preserved
   assert.ok(fs.existsSync(path.join(dir, 'mystique', 'spinner-backup.json')));
   spinner.restoreSpinner();
@@ -33,13 +34,14 @@ test('applySpinner writes verbs and snapshots prior absent key; restore removes 
   assert.strictEqual(fs.existsSync(path.join(dir, 'mystique', 'spinner-backup.json')), false);
 });
 
-test('restore puts back the user original custom verbs', () => {
+test('restore puts back the user original custom verbs (object shape preserved verbatim)', () => {
   const dir = freshClaude();
-  fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify({ spinnerVerbs: ['Thinking', 'Cogitating'] }));
+  const original = { verbs: ['Thinking', 'Cogitating'], mode: 'append' };
+  fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify({ spinnerVerbs: original }));
   spinner.applySpinner(['Hardening']);
   spinner.applySpinner(['Refactoring']); // second switch must NOT clobber the snapshot
   spinner.restoreSpinner();
-  assert.deepStrictEqual(readSettings(dir).spinnerVerbs, ['Thinking', 'Cogitating']);
+  assert.deepStrictEqual(readSettings(dir).spinnerVerbs, original);
 });
 
 test('restore with no snapshot is a no-op', () => {

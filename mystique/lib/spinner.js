@@ -39,7 +39,10 @@ function applySpinner(verbs) {
   }
   const settings = r.ok ? r.data : {};
   snapshotOnce(settings);
-  settings.spinnerVerbs = verbs;
+  // Claude Code's settings schema requires spinnerVerbs to be an object
+  // { verbs: string[], mode?: "append"|"replace" } — NOT a bare array.
+  // 'replace' makes the form's verbs the whole spinner (role identity).
+  settings.spinnerVerbs = { verbs, mode: 'replace' };
   writeJson(file, settings);
 }
 
