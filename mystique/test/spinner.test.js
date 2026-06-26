@@ -46,3 +46,24 @@ test('restore with no snapshot is a no-op', () => {
   freshClaude();
   assert.doesNotThrow(() => spinner.restoreSpinner());
 });
+
+test('applySpinner does NOT clobber a corrupt settings.json', () => {
+  const dir = freshClaude();
+  const sf = path.join(dir, 'settings.json');
+  fs.writeFileSync(sf, '{ this is not json');
+  spinner.applySpinner(['Hardening']);
+  assert.strictEqual(fs.readFileSync(sf, 'utf8'), '{ this is not json'); // untouched
+  assert.strictEqual(fs.existsSync(path.join(dir, 'mystique', 'spinner-backup.json')), false); // no snapshot taken
+});
+
+test('restoreSpinner skips when settings.json is corrupt, leaving backup intact', () => {
+  const dir = freshClaude();
+  // valid settings + apply to create a backup
+  fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify({ spinnerVerbs: ['Orig'] }));
+  spinner.applySpinner(['Hardening']);
+  // now corrupt settings.json
+  fs.writeFileSync(path.join(dir, 'settings.json'), 'garbage{');
+  spinner.restoreSpinner();
+  assert.strictEqual(fs.readFileSync(path.join(dir, 'settings.json'), 'utf8'), 'garbage{'); // untouched
+  assert.ok(fs.existsSync(path.join(dir, 'mystique', 'spinner-backup.json'))); // backup preserved
+});

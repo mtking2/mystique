@@ -3,8 +3,13 @@ const fs = require('fs');
 const path = require('path');
 const { settingsPath, spinnerBackupPath } = require('./paths');
 
-function readJson(file, fallback) {
-  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; }
+// {ok:true, data} | {ok:false, reason:'missing'|'corrupt'}
+function readJsonSafe(file) {
+  let raw;
+  try { raw = fs.readFileSync(file, 'utf8'); }
+  catch { return { ok: false, reason: 'missing' }; }
+  try { return { ok: true, data: JSON.parse(raw) }; }
+  catch { return { ok: false, reason: 'corrupt' }; }
 }
 function writeJson(file, obj) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -27,25 +32,35 @@ function snapshotOnce(settings) {
 function applySpinner(verbs) {
   if (!verbs || !verbs.length) return; // form has no spinner — leave settings alone
   const file = settingsPath();
-  const settings = readJson(file, {});
+  const r = readJsonSafe(file);
+  if (r.reason === 'corrupt') {
+    process.stderr.write('mystique: settings.json is not valid JSON — skipping spinner update.\n');
+    return; // never clobber a present-but-unparseable settings.json
+  }
+  const settings = r.ok ? r.data : {};
   snapshotOnce(settings);
   settings.spinnerVerbs = verbs;
   writeJson(file, settings);
 }
 
 function restoreSpinner() {
-  const backup = spinnerBackupPath();
-  if (!fs.existsSync(backup)) return; // never mutated
-  const snap = readJson(backup, { present: false });
+  const b = readJsonSafe(spinnerBackupPath());
+  if (!b.ok) return; // missing or corrupt backup → no-op
   const file = settingsPath();
-  const settings = readJson(file, {});
+  const r = readJsonSafe(file);
+  if (r.reason === 'corrupt') {
+    process.stderr.write('mystique: settings.json is not valid JSON — skipping spinner restore.\n');
+    return; // leave the backup in place so a later restore can succeed
+  }
+  const settings = r.ok ? r.data : {};
+  const snap = b.data;
   if (snap.present) {
     settings.spinnerVerbs = snap.value;
   } else {
     delete settings.spinnerVerbs;
   }
   writeJson(file, settings);
-  fs.rmSync(backup, { force: true });
+  fs.rmSync(spinnerBackupPath(), { force: true });
 }
 
 module.exports = { applySpinner, restoreSpinner };
