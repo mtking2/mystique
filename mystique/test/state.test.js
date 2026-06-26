@@ -66,6 +66,21 @@ test('addStack throws when two forms are already active', () => {
   assert.throws(() => state.addStack('c', 'C'), /two forms/i);
 });
 
+test('readState caps to MAX and normalizes entries from an oversized/dirty file', () => {
+  const dir = freshClaude();
+  fs.mkdirSync(path.join(dir, 'mystique'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'mystique', 'active.json'), JSON.stringify({
+    active: [
+      { name: 'a', label: 'A', extra: 'drop me' },
+      { name: 'b' },
+      { name: 'c', label: 'C' },
+    ],
+  }));
+  const s = state.readState();
+  assert.strictEqual(s.active.length, 2);                       // capped to MAX
+  assert.deepStrictEqual(s.active, [{ name: 'a', label: 'A' }, { name: 'b', label: '' }]); // extra stripped, label defaulted
+});
+
 test('clear empties the active list', () => {
   freshClaude();
   state.setPrimary('a', 'A');
