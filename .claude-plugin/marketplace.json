@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "mystique",
+  "description": "Shapeshift Claude Code into any role — instantly, mid-session.",
+  "owner": {
+    "name": "Michael King",
+    "url": "https://github.com/mtking2"
+  },
+  "plugins": [
+    {
+      "name": "mystique",
+      "description": "Frictionless in-session role switching: forms as behavior bundles.",
+      "source": "./mystique",
+      "category": "productivity"
+    }
+  ]
+}
