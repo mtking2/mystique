@@ -27,6 +27,7 @@ function renderInjection(stateObj) {
     lines.push(`MYSTIQUE ACTIVE — form: ${f.name}`);
     lines.push(f.body.trim());
   } else {
+    // cap-2 enforced upstream (lib/state.js); only forms 1 and 2 are rendered
     lines.push(`MYSTIQUE ACTIVE — ${resolved.length} forms. On conflict, primary (form 1) wins.`);
     lines.push(`form 1 (primary): ${resolved[0].name}`);
     lines.push(resolved[0].body.trim());

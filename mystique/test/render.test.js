@@ -52,6 +52,15 @@ test('renderInjection for two forms labels primary and notes conflict rule', () 
   assert.match(out, /rails/);
 });
 
+test('renderInjection draws tool guidance from the primary form only', () => {
+  const dir = tmpClaude();
+  writeForm(dir, 'sec', 'name: sec\ntool_prefer: [Read]', '- breach\n');
+  writeForm(dir, 'rails', 'name: rails\ntool_avoid: [Bash]', '- rails\n');
+  const out = renderInjection({ active: [{ name: 'sec', label: 'S' }, { name: 'rails', label: 'R' }] });
+  assert.match(out, /Tool guidance \(advisory\): prefer Read\./); // primary's
+  assert.doesNotMatch(out, /avoid Bash/);                          // secondary's excluded
+});
+
 test('renderInjection skips a missing form gracefully', () => {
   tmpClaude();
   // form file never written
