@@ -5,8 +5,8 @@
 const { readState } = require('../lib/state');
 const { renderInjection } = require('../lib/render');
 
-let input = '';
-process.stdin.on('data', chunk => { input += chunk; });
+// Drain stdin (we don't use the prompt payload) so the 'end' event fires.
+process.stdin.on('data', () => {});
 process.stdin.on('end', () => {
   try {
     const injection = renderInjection(readState());
