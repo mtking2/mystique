@@ -1,15 +1,18 @@
 #!/usr/bin/env node
 'use strict';
-// UserPromptSubmit hook: re-inject the active mystique form(s) every turn.
-// Silent (no output) when no form is active. Never throws.
+// UserPromptSubmit hook: re-inject the active mystique form(s) for THIS session
+// every turn. Silent when no form is active or no session_id is present. Never throws.
 const { readState } = require('../lib/state');
 const { renderInjection } = require('../lib/render');
 
-// Drain stdin (we don't use the prompt payload) so the 'end' event fires.
-process.stdin.on('data', () => {});
+let buf = '';
+process.stdin.on('data', d => { buf += d; });
 process.stdin.on('end', () => {
   try {
-    const injection = renderInjection(readState());
+    let sessionId;
+    try { sessionId = JSON.parse(buf).session_id; } catch {}
+    if (!sessionId) return; // can't resolve a session -> stay silent
+    const injection = renderInjection(readState(sessionId));
     if (!injection) return; // silent: nothing active
     process.stdout.write(JSON.stringify({
       hookSpecificOutput: {
