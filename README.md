@@ -87,20 +87,22 @@ It prints e.g. `🛡️ Security +💎 Rails`, or nothing when no form is active
 
 ### Bash snippet (no `node` spawn)
 
-If your statusline is already a `bash` + `jq` script, read `active.json` directly — faster, no subprocess per render:
+If your statusline is already a `bash` + `jq` script, read this session's state file directly — faster, no subprocess per render. The statusline JSON arrives on stdin, so pull `session_id` from it:
 
 ```bash
 # mystique active form(s) — drop into your statusline.sh
-MYST_FILE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/mystique/active.json"
+INPUT=$(cat)                                  # statusline JSON on stdin
+SID=$(printf '%s' "$INPUT" | jq -r '.session_id // empty')
+MYST_FILE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/mystique/sessions/${SID}.json"
 myst=""
-if [ -f "$MYST_FILE" ] && [ ! -L "$MYST_FILE" ]; then
+if [ -n "$SID" ] && [ -f "$MYST_FILE" ] && [ ! -L "$MYST_FILE" ]; then
 	myst=$(jq -r '(.active // []) | map(.label // .name) | join(" +")' "$MYST_FILE" 2>/dev/null)
 fi
 # then append "$myst" to your status line, e.g.:
 [ -n "$myst" ] && printf ' | \033[38;2;180;142;255m%s\033[0m' "$myst"
 ```
 
-Prints e.g. `🛡️ Security +💎 Rails` in violet, nothing when no form is active. Symlink-guarded and silent on a missing/corrupt file.
+Prints e.g. `🛡️ Security +💎 Rails` in violet, nothing when no form is active. If your script already consumes stdin elsewhere, capture `INPUT=$(cat)` once and reuse it. Symlink-guarded and silent on a missing/corrupt file.
 
 ## License
 
