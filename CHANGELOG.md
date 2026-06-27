@@ -1,0 +1,43 @@
+# Changelog
+
+All notable changes to mystique are documented here.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.2.0] - 2026-06-27
+
+### Changed
+
+- **State is now per-session.** Each Claude Code window keeps its own active
+  form(s) in `~/.claude/mystique/sessions/<session_id>.json`. Switching, stacking,
+  or clearing a form in one window no longer leaks into other windows. The session
+  id comes from `CLAUDE_CODE_SESSION_ID` (CLI) and the `session_id` stdin payload
+  (hook and statusline segment). There is no global form layer.
+- `clear` now deletes this session's state file rather than emptying a shared one.
+- Statusline: the `bash`/`jq` README snippet now reads the per-session path and
+  pulls `session_id` from the statusline stdin JSON.
+
+### Added
+
+- Spinner handoff (strategy S2): clearing a form re-applies the spinner of the
+  most-recently-active surviving session, and only restores your original spinner
+  once the last mystique session clears.
+- Automatic cleanup: session state files older than 30 days are swept on CLI use.
+
+### Migration
+
+- The old global `~/.claude/mystique/active.json` is ignored and deleted on first
+  CLI invocation. No action required; sessions start with no form after upgrade.
+
+## [0.1.0]
+
+### Added
+
+- Initial release: switchable **forms** (roles) as behavior bundles — mindset,
+  output style, recommended skills, advisory tool scope, focus, and optional
+  cosmetics (label + spinner verbs).
+- `UserPromptSubmit` hook re-injects the active form(s) every turn.
+- `switch`, `stack` (cap 2, primary wins), `clear`, `list`, `show` commands.
+- Project-local (`./.claude/roles/`) forms override global (`~/.claude/roles/`).
+- Composable statusline segment helper.
