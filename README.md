@@ -73,6 +73,21 @@ spinner: [Doing]           # optional, spinner verbs
 
 Keep the body tight (~150 words) — it is injected every turn. Or just run `/role create` for a guided wizard.
 
+## Spinner (per-session)
+
+A form's `spinner` verbs drive Claude Code's thinking spinner. `spinnerVerbs` is a
+single global `settings.json` key, so per-session spinners aren't truly possible —
+instead the `UserPromptSubmit` hook re-asserts the active form's verbs every turn.
+The window whose prompt just fired wins the spinner (last-active-wins), which is
+exactly the window whose spinner is about to render. Writes are change-guarded, so
+`settings.json` is only touched when the spinner actually needs to change.
+
+> **Known limitation:** on a turn where the spinner *changes* (a cross-window
+> handoff), the opening frame may briefly show the previous verbs before flipping
+> to the new ones — the hook's write races Claude Code's initial read of
+> `spinnerVerbs`. It self-corrects within the same turn; a single steady-state
+> window never flashes.
+
 ## Statusline (optional)
 
 Add the active form to your own statusline by calling the segment helper. From a statusline command, invoke it with the plugin root Claude Code provides:

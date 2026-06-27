@@ -30,6 +30,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   once the last mystique session clears.
 - Automatic cleanup: session state files older than 30 days are swept on CLI use.
 
+### Known limitations
+
+- Spinner changeover shows one stale frame. On a turn where the active spinner
+  changes (a cross-window handoff, or a switch in another window), Claude Code
+  reads `spinnerVerbs` to start the spinner at roughly the same moment the
+  `UserPromptSubmit` hook writes the new verbs, so the opening frame can briefly
+  show the previous value before the hot-reload flips it. It self-corrects within
+  the same turn, and a single steady-state window never flashes (the change-guard
+  no-ops). `UserPromptSubmit` is the earliest per-turn hook, so this opening-frame
+  race can't be fully closed from the plugin side.
+
 ### Migration
 
 - The old global `~/.claude/mystique/active.json` is ignored and deleted on first
