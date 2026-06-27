@@ -1,6 +1,6 @@
 {
   "name": "mystique",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shapeshift Claude Code into switchable roles (forms): mindset, output style, recommended skills, advisory tool scope, focus, and optional cosmetics.",
   "author": {
     "name": "Michael King",
