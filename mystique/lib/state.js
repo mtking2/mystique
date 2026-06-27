@@ -1,7 +1,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { sessionStatePath } = require('./paths');
+const { sessionStatePath, sessionsDir } = require('./paths');
 
 const MAX = 2;
 
@@ -54,4 +54,37 @@ function clear(sessionId) {
   return { active: [] };
 }
 
-module.exports = { readState, writeState, setPrimary, addStack, clear, MAX };
+// Active sessions (parseable, non-empty), newest mtime first.
+function listActiveSessions() {
+  let entries = [];
+  try { entries = fs.readdirSync(sessionsDir()); } catch { return []; }
+  const out = [];
+  for (const entry of entries) {
+    if (!entry.endsWith('.json')) continue;
+    const file = path.join(sessionsDir(), entry);
+    let stat, st;
+    try {
+      stat = fs.statSync(file);
+      st = normalize(JSON.parse(fs.readFileSync(file, 'utf8')));
+    } catch { continue; }
+    if (!st.active.length) continue;
+    out.push({ id: entry.slice(0, -5), mtime: stat.mtimeMs, state: st });
+  }
+  return out.sort((a, b) => b.mtime - a.mtime);
+}
+
+// Delete session files whose mtime is older than maxAgeDays.
+function sweepStale(maxAgeDays) {
+  let entries = [];
+  try { entries = fs.readdirSync(sessionsDir()); } catch { return; }
+  const cutoff = Date.now() - maxAgeDays * 24 * 60 * 60 * 1000;
+  for (const entry of entries) {
+    if (!entry.endsWith('.json')) continue;
+    const file = path.join(sessionsDir(), entry);
+    try {
+      if (fs.statSync(file).mtimeMs < cutoff) fs.rmSync(file, { force: true });
+    } catch {}
+  }
+}
+
+module.exports = { readState, writeState, setPrimary, addStack, clear, listActiveSessions, sweepStale, MAX };

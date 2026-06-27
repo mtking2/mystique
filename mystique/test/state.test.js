@@ -104,3 +104,46 @@ test('clear on a session with no file is a no-op', () => {
   freshClaude();
   assert.doesNotThrow(() => state.clear('nope'));
 });
+
+function touch(dir, id, ageDays) {
+  const file = sessionFile(dir, id);
+  const t = new Date(Date.now() - ageDays * 24 * 60 * 60 * 1000);
+  fs.utimesSync(file, t, t);
+}
+
+test('listActiveSessions returns only non-empty sessions, newest first', () => {
+  const dir = freshClaude();
+  state.setPrimary('old', 'a', 'A');
+  state.setPrimary('new', 'b', 'B');
+  state.clear('empty');                 // no file created
+  touch(dir, 'old', 2);                 // 2 days ago
+  touch(dir, 'new', 0);                 // now
+  const list = state.listActiveSessions();
+  assert.deepStrictEqual(list.map(s => s.id), ['new', 'old']); // newest first
+  assert.deepStrictEqual(list[0].state.active[0], { name: 'b', label: 'B' });
+});
+
+test('listActiveSessions skips corrupt and empty session files', () => {
+  const dir = freshClaude();
+  fs.mkdirSync(path.join(dir, 'mystique', 'sessions'), { recursive: true });
+  fs.writeFileSync(sessionFile(dir, 'bad'), 'garbage{');
+  fs.writeFileSync(sessionFile(dir, 'empty'), JSON.stringify({ active: [] }));
+  state.setPrimary('good', 'a', 'A');
+  assert.deepStrictEqual(state.listActiveSessions().map(s => s.id), ['good']);
+});
+
+test('sweepStale deletes files older than maxAgeDays, keeps fresh ones', () => {
+  const dir = freshClaude();
+  state.setPrimary('stale', 'a', 'A');
+  state.setPrimary('fresh', 'b', 'B');
+  touch(dir, 'stale', 40);
+  touch(dir, 'fresh', 1);
+  state.sweepStale(30);
+  assert.strictEqual(fs.existsSync(sessionFile(dir, 'stale')), false);
+  assert.strictEqual(fs.existsSync(sessionFile(dir, 'fresh')), true);
+});
+
+test('sweepStale is a no-op when the sessions dir is missing', () => {
+  freshClaude();
+  assert.doesNotThrow(() => state.sweepStale(30));
+});
