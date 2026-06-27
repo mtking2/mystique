@@ -47,3 +47,29 @@ test('hook is silent when stdin has no session_id', () => {
   const out = runHook(claude, proj, JSON.stringify({ prompt: 'hi' }));
   assert.strictEqual(out.trim(), '');
 });
+
+const SEG = path.join(__dirname, '..', 'bin', 'mystique-segment.js');
+
+function runSeg(claude, proj, stdin) {
+  return execFileSync('node', [SEG], {
+    cwd: proj,
+    env: { ...process.env, CLAUDE_CONFIG_DIR: claude },
+    input: stdin,
+    encoding: 'utf8',
+  });
+}
+
+test('segment prints the label for the stdin session_id', () => {
+  const { claude, proj } = setup();
+  assert.strictEqual(runSeg(claude, proj, JSON.stringify({ session_id: 's1' })), 'A');
+});
+
+test('segment prints nothing for an unknown session', () => {
+  const { claude, proj } = setup();
+  assert.strictEqual(runSeg(claude, proj, JSON.stringify({ session_id: 's-unknown' })), '');
+});
+
+test('segment prints nothing when stdin has no session_id', () => {
+  const { claude, proj } = setup();
+  assert.strictEqual(runSeg(claude, proj, JSON.stringify({})), '');
+});
