@@ -6,6 +6,7 @@ const { resolveForm, listForms } = require('../lib/forms');
 const { renderInjection } = require('../lib/render');
 const { legacyStatePath } = require('../lib/paths');
 const spinner = require('../lib/spinner');
+const { syncSpinner, verbsFor } = require('../lib/spinner-sync');
 
 // This window's session. Falls back to a stable id for manual CLI use outside Claude Code.
 const SESSION_ID = process.env.CLAUDE_CODE_SESSION_ID || '_default';
@@ -13,25 +14,12 @@ const STALE_DAYS = 30;
 
 function fail(msg) { process.stderr.write(msg + '\n'); process.exit(1); }
 
-function spinnerVerbs(name) {
-  const f = resolveForm(name);
-  return (f && f.meta.spinner) || [];
-}
-
-// Apply the spinner verbs of THIS session's current primary form (if any).
-function syncSpinner() {
-  const s = state.readState(SESSION_ID);
-  if (!s.active.length) { spinner.restoreSpinner(); return; }
-  const verbs = spinnerVerbs(s.active[0].name);
-  if (verbs.length) spinner.applySpinner(verbs);
-}
-
 // S2: after this session's file is gone, hand the spinner to the surviving
 // most-recently-touched session; restore the true original only when none remain.
 function resyncSpinnerAfterClear() {
   const others = state.listActiveSessions();
   if (!others.length) { spinner.restoreSpinner(); return; }
-  const verbs = spinnerVerbs(others[0].state.active[0].name);
+  const verbs = verbsFor(others[0].state.active[0].name);
   if (verbs.length) spinner.applySpinner(verbs);
 }
 
@@ -40,7 +28,7 @@ function cmdSwitch(name) {
   const f = resolveForm(name);
   if (!f) fail(`No form "${name}". Run \`mystique list\` to see available forms.`);
   state.setPrimary(SESSION_ID, name, f.meta.label || '');
-  syncSpinner();
+  syncSpinner(SESSION_ID);
   process.stdout.write(`Shifted into ${name}${f.meta.label ? ` (${f.meta.label})` : ''}.\n`);
 }
 
@@ -54,7 +42,7 @@ function cmdStack(name) {
   } catch (e) {
     fail(e.message);
   }
-  syncSpinner();
+  syncSpinner(SESSION_ID);
   const active = state.readState(SESSION_ID).active.map(x => x.name).join(' + ');
   const verb = already ? `${name} already active` : `Stacked ${name}`;
   process.stdout.write(`${verb}. Active: ${active}.\n`);

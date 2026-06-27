@@ -4,6 +4,7 @@
 // every turn. Silent when no form is active or no session_id is present. Never throws.
 const { readState } = require('../lib/state');
 const { renderInjection } = require('../lib/render');
+const { syncSpinner } = require('../lib/spinner-sync');
 
 let buf = '';
 process.stdin.on('data', d => { buf += d; });
@@ -12,6 +13,7 @@ process.stdin.on('end', () => {
     let sessionId;
     try { sessionId = JSON.parse(buf).session_id; } catch {}
     if (!sessionId) return; // can't resolve a session -> stay silent
+    try { syncSpinner(sessionId); } catch {} // side effect; must never block injection
     const injection = renderInjection(readState(sessionId));
     if (!injection) return; // silent: nothing active
     process.stdout.write(JSON.stringify({

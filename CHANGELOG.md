@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Per-session spinner: the `UserPromptSubmit` hook re-asserts the active form's
+  `spinnerVerbs` every turn, so the window you are actively driving owns the
+  thinking spinner (last-active-wins — and that is exactly the window whose
+  spinner is about to render). Writes are change-guarded, so `settings.json` is
+  only touched when the spinner actually needs to change.
 - Spinner handoff (strategy S2): clearing a form re-applies the spinner of the
   most-recently-active surviving session, and only restores your original spinner
   once the last mystique session clears.
