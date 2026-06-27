@@ -42,7 +42,11 @@ function applySpinner(verbs) {
   // Claude Code's settings schema requires spinnerVerbs to be an object
   // { verbs: string[], mode?: "append"|"replace" } — NOT a bare array.
   // 'replace' makes the form's verbs the whole spinner (role identity).
-  settings.spinnerVerbs = { verbs, mode: 'replace' };
+  const desired = { verbs, mode: 'replace' };
+  // Write-on-change: this runs every prompt via the inject hook. Skip the write
+  // (and the ConfigChange churn + lost-update window) when already current.
+  if (JSON.stringify(settings.spinnerVerbs) === JSON.stringify(desired)) return;
+  settings.spinnerVerbs = desired;
   writeJson(file, settings);
 }
 

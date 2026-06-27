@@ -69,3 +69,23 @@ test('restoreSpinner skips when settings.json is corrupt, leaving backup intact'
   assert.strictEqual(fs.readFileSync(path.join(dir, 'settings.json'), 'utf8'), 'garbage{'); // untouched
   assert.ok(fs.existsSync(path.join(dir, 'mystique', 'spinner-backup.json'))); // backup preserved
 });
+
+test('applySpinner is a no-op when the verbs are already current (write-on-change)', () => {
+  const dir = freshClaude();
+  const sf = path.join(dir, 'settings.json');
+  fs.writeFileSync(sf, JSON.stringify({ model: 'opus' }));
+  spinner.applySpinner(['Aaa', 'Bbb']);                 // first apply -> writes
+  const old = new Date(2001, 0, 1);
+  fs.utimesSync(sf, old, old);                          // backdate so a re-write is detectable
+  spinner.applySpinner(['Aaa', 'Bbb']);                 // identical verbs -> must skip the write
+  assert.strictEqual(
+    Math.floor(fs.statSync(sf).mtimeMs / 1000),
+    Math.floor(old.getTime() / 1000),                  // mtime unchanged == no write happened
+  );
+  spinner.applySpinner(['Ccc']);                        // a genuinely different set still writes
+  assert.notStrictEqual(
+    Math.floor(fs.statSync(sf).mtimeMs / 1000),
+    Math.floor(old.getTime() / 1000),
+  );
+  assert.deepStrictEqual(readSettings(dir).spinnerVerbs, { verbs: ['Ccc'], mode: 'replace' });
+});
