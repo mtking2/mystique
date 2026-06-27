@@ -15,7 +15,16 @@ function rolesDirs() {
   ];
 }
 
-function statePath() {
+function sessionsDir() {
+  return path.join(claudeDir(), 'mystique', 'sessions');
+}
+
+function sessionStatePath(sessionId) {
+  return path.join(sessionsDir(), `${sessionId}.json`);
+}
+
+// The pre-per-session global state file. Retained only so startup can delete it.
+function legacyStatePath() {
   return path.join(claudeDir(), 'mystique', 'active.json');
 }
 
@@ -27,4 +36,7 @@ function spinnerBackupPath() {
   return path.join(claudeDir(), 'mystique', 'spinner-backup.json');
 }
 
-module.exports = { claudeDir, rolesDirs, statePath, settingsPath, spinnerBackupPath };
+module.exports = {
+  claudeDir, rolesDirs, sessionsDir, sessionStatePath, legacyStatePath,
+  settingsPath, spinnerBackupPath,
+};
