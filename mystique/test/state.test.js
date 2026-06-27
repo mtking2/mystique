@@ -11,79 +11,96 @@ function freshClaude() {
   process.env.CLAUDE_CONFIG_DIR = dir;
   return dir;
 }
+function sessionFile(dir, id) {
+  return path.join(dir, 'mystique', 'sessions', `${id}.json`);
+}
 
 test('readState returns empty active when no file exists', () => {
   freshClaude();
-  assert.deepStrictEqual(state.readState(), { active: [] });
+  assert.deepStrictEqual(state.readState('s1'), { active: [] });
 });
 
 test('readState returns empty active on corrupt file', () => {
   const dir = freshClaude();
-  fs.mkdirSync(path.join(dir, 'mystique'), { recursive: true });
-  fs.writeFileSync(path.join(dir, 'mystique', 'active.json'), 'not json{');
-  assert.deepStrictEqual(state.readState(), { active: [] });
+  fs.mkdirSync(path.join(dir, 'mystique', 'sessions'), { recursive: true });
+  fs.writeFileSync(sessionFile(dir, 's1'), 'not json{');
+  assert.deepStrictEqual(state.readState('s1'), { active: [] });
+});
+
+test('state is isolated per session', () => {
+  freshClaude();
+  state.setPrimary('s1', 'pirate', '🏴‍☠️');
+  assert.deepStrictEqual(state.readState('s2'), { active: [] }); // s2 untouched
+  assert.deepStrictEqual(state.readState('s1').active, [{ name: 'pirate', label: '🏴‍☠️' }]);
 });
 
 test('setPrimary on empty state creates a single-form state', () => {
   freshClaude();
-  const s = state.setPrimary('sec', '🛡️');
+  const s = state.setPrimary('s1', 'sec', '🛡️');
   assert.deepStrictEqual(s.active, [{ name: 'sec', label: '🛡️' }]);
-  assert.deepStrictEqual(state.readState(), s); // persisted
+  assert.deepStrictEqual(state.readState('s1'), s); // persisted
 });
 
 test('setPrimary preserves an existing secondary form', () => {
   freshClaude();
-  state.setPrimary('a', 'A');
-  state.addStack('b', 'B');
-  const s = state.setPrimary('c', 'C');
+  state.setPrimary('s1', 'a', 'A');
+  state.addStack('s1', 'b', 'B');
+  const s = state.setPrimary('s1', 'c', 'C');
   assert.deepStrictEqual(s.active, [{ name: 'c', label: 'C' }, { name: 'b', label: 'B' }]);
 });
 
 test('addStack appends a second form', () => {
   freshClaude();
-  state.setPrimary('a', 'A');
-  const s = state.addStack('b', 'B');
+  state.setPrimary('s1', 'a', 'A');
+  const s = state.addStack('s1', 'b', 'B');
   assert.deepStrictEqual(s.active.map(f => f.name), ['a', 'b']);
 });
 
 test('addStack on empty state sets the primary', () => {
   freshClaude();
-  const s = state.addStack('a', 'A');
+  const s = state.addStack('s1', 'a', 'A');
   assert.deepStrictEqual(s.active, [{ name: 'a', label: 'A' }]);
 });
 
 test('addStack is a no-op when the form is already active', () => {
   freshClaude();
-  state.setPrimary('a', 'A');
-  const s = state.addStack('a', 'A');
+  state.setPrimary('s1', 'a', 'A');
+  const s = state.addStack('s1', 'a', 'A');
   assert.deepStrictEqual(s.active.map(f => f.name), ['a']);
 });
 
 test('addStack throws when two forms are already active', () => {
   freshClaude();
-  state.setPrimary('a', 'A');
-  state.addStack('b', 'B');
-  assert.throws(() => state.addStack('c', 'C'), /two forms/i);
+  state.setPrimary('s1', 'a', 'A');
+  state.addStack('s1', 'b', 'B');
+  assert.throws(() => state.addStack('s1', 'c', 'C'), /two forms/i);
 });
 
 test('readState caps to MAX and normalizes entries from an oversized/dirty file', () => {
   const dir = freshClaude();
-  fs.mkdirSync(path.join(dir, 'mystique'), { recursive: true });
-  fs.writeFileSync(path.join(dir, 'mystique', 'active.json'), JSON.stringify({
+  fs.mkdirSync(path.join(dir, 'mystique', 'sessions'), { recursive: true });
+  fs.writeFileSync(sessionFile(dir, 's1'), JSON.stringify({
     active: [
       { name: 'a', label: 'A', extra: 'drop me' },
       { name: 'b' },
       { name: 'c', label: 'C' },
     ],
   }));
-  const s = state.readState();
+  const s = state.readState('s1');
   assert.strictEqual(s.active.length, 2);                       // capped to MAX
   assert.deepStrictEqual(s.active, [{ name: 'a', label: 'A' }, { name: 'b', label: '' }]); // extra stripped, label defaulted
 });
 
-test('clear empties the active list', () => {
-  freshClaude();
-  state.setPrimary('a', 'A');
-  const s = state.clear();
+test('clear deletes the session file (resolution -> no form)', () => {
+  const dir = freshClaude();
+  state.setPrimary('s1', 'a', 'A');
+  assert.strictEqual(fs.existsSync(sessionFile(dir, 's1')), true);
+  const s = state.clear('s1');
   assert.deepStrictEqual(s, { active: [] });
+  assert.strictEqual(fs.existsSync(sessionFile(dir, 's1')), false);
+});
+
+test('clear on a session with no file is a no-op', () => {
+  freshClaude();
+  assert.doesNotThrow(() => state.clear('nope'));
 });
