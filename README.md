@@ -16,6 +16,7 @@ Existing role/persona projects each cover one slice — capability *or* cosmetic
 - **Behavior bundle** — principles, output style, recommended skills, focus, advisory tool scope.
 - **Stacking (cap 2)** — combine two forms; primary wins conflicts.
 - **Project + global forms** — `./.claude/roles/` overrides `~/.claude/roles/`. Repos ship their own forms.
+- **Shorthand aliases** — declare `aliases: [sr, sec]`; `/role sr` shifts into `security-reviewer`. Exact names always win over an alias.
 - **Easy authoring** — `/role create` wizard, or just drop a markdown file.
 - **Optional cosmetics** — per-form spinner verbs + a composable statusline segment.
 
@@ -28,8 +29,8 @@ Early development.
 | Command | Action |
 |---------|--------|
 | `/role` | Menu — active form(s) + available |
-| `/role <name>` | Shift into a form (primary) |
-| `/role +<name>` | Stack a 2nd form (cap 2) |
+| `/role <name>` | Shift into a form (primary) — `<name>` accepts a filename or alias |
+| `/role +<name>` | Stack a 2nd form (cap 2) — alias accepted too |
 | `/role clear` | Revert to true self |
 | `/role show` | Current form(s) + resolved injection |
 | `/role list` | All forms, global + project |
@@ -56,6 +57,7 @@ A form is a markdown file in `~/.claude/roles/` (global) or `./.claude/roles/` (
 ---
 name: my-role
 description: One line.
+aliases: [mr, myr]         # optional, shorthand for switch/stack
 label: 🎭 My Role          # optional, statusline
 tool_prefer: [Read, Grep]  # optional, advisory
 tool_avoid: [Bash]         # optional, advisory
