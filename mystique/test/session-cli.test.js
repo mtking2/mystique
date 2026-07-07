@@ -16,6 +16,7 @@ function setup() {
   fs.mkdirSync(roles, { recursive: true });
   fs.writeFileSync(path.join(roles, 'aaa.md'), '---\nlabel: A\nspinner: [Aaa]\n---\nbody A\n');
   fs.writeFileSync(path.join(roles, 'bbb.md'), '---\nlabel: B\nspinner: [Bbb]\n---\nbody B\n');
+  fs.writeFileSync(path.join(roles, 'ccc.md'), '---\nlabel: C\naliases: [cc]\nspinner: [Ccc]\n---\nbody C\n');
   return { claude, proj };
 }
 function run(claude, proj, sessionId, args) {
@@ -52,6 +53,22 @@ test('S2: clearing one session re-applies a surviving session spinner; last clea
 
   run(claude, proj, 's1', ['clear']);            // last session out -> restore original (was absent)
   assert.strictEqual('spinnerVerbs' in settings(claude), false);
+});
+
+test('switch by alias stores the canonical form name in session state', () => {
+  const { claude, proj } = setup();
+  const out = run(claude, proj, 's1', ['switch', 'cc']);
+  const s = JSON.parse(fs.readFileSync(sessionFile(claude, 's1'), 'utf8'));
+  assert.strictEqual(s.active[0].name, 'ccc'); // canonical, so per-turn injection re-resolves
+  assert.match(out, /Shifted into ccc/);
+  assert.match(out, /via "cc"/);
+});
+
+test('stack by alias on an already-active form reports "already active"', () => {
+  const { claude, proj } = setup();
+  run(claude, proj, 's1', ['switch', 'ccc']); // active by canonical name
+  const out = run(claude, proj, 's1', ['stack', 'cc']); // stack via alias
+  assert.match(out, /ccc already active/);
 });
 
 test('startup deletes the legacy global active.json', () => {

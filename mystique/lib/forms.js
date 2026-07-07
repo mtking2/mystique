@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { rolesDirs } = require('./paths');
 
-const ARRAY_KEYS = new Set(['tool_prefer', 'tool_avoid', 'triggers', 'spinner']);
+const ARRAY_KEYS = new Set(['tool_prefer', 'tool_avoid', 'triggers', 'spinner', 'aliases']);
 
 // Parse a single-line inline array "[a, b, c]" -> ['a','b','c']; empty -> [].
 function parseInlineArray(value) {
@@ -40,16 +40,47 @@ function parseFrontmatter(text) {
   return { meta, body };
 }
 
+// Read and parse every .md form in a dir. Returns [{stem, meta, body, path}];
+// a missing/unreadable dir yields []. Unparseable files degrade to empty meta.
+function readFormsDir(dir) {
+  let entries = [];
+  try { entries = fs.readdirSync(dir); } catch { return []; }
+  const out = [];
+  for (const entry of entries) {
+    if (!entry.endsWith('.md')) continue;
+    const file = path.join(dir, entry);
+    let parsed = { meta: {}, body: '' };
+    try { parsed = parseFrontmatter(fs.readFileSync(file, 'utf8')); } catch {}
+    out.push({ stem: entry.slice(0, -3), meta: parsed.meta, body: parsed.body, path: file });
+  }
+  return out;
+}
+
 // Resolve a form by name across project-first then global roles dirs.
+// Exact filename always wins; on a miss, fall back to matching a form's
+// frontmatter `aliases`. The returned `name` is always the canonical filename
+// stem (never the alias) so callers persist a name that re-resolves each turn.
 function resolveForm(name) {
   const dirs = rolesDirs();
   const sources = ['project', 'global'];
+  // 1. Exact filename match — wins over any alias.
   for (let i = 0; i < dirs.length; i++) {
     const file = path.join(dirs[i], `${name}.md`);
     if (fs.existsSync(file)) {
-      const text = fs.readFileSync(file, 'utf8');
-      const { meta, body } = parseFrontmatter(text);
+      const { meta, body } = parseFrontmatter(fs.readFileSync(file, 'utf8'));
       return { name, meta, body, source: sources[i], path: file };
+    }
+  }
+  // 2. Alias fallback, project-first. A duplicate alias within one dir is an error.
+  for (let i = 0; i < dirs.length; i++) {
+    const matches = readFormsDir(dirs[i])
+      .filter(f => Array.isArray(f.meta.aliases) && f.meta.aliases.includes(name));
+    if (matches.length > 1) {
+      throw new Error(`Alias "${name}" is claimed by multiple forms in ${dirs[i]}: ${matches.map(m => m.stem).join(', ')}. Rename an alias to disambiguate.`);
+    }
+    if (matches.length === 1) {
+      const m = matches[0];
+      return { name: m.stem, meta: m.meta, body: m.body, source: sources[i], path: m.path };
     }
   }
   return null;
@@ -61,15 +92,14 @@ function listForms() {
   const sources = ['project', 'global'];
   const seen = new Map();
   for (let i = 0; i < dirs.length; i++) {
-    let entries = [];
-    try { entries = fs.readdirSync(dirs[i]); } catch { continue; }
-    for (const entry of entries) {
-      if (!entry.endsWith('.md')) continue;
-      const name = entry.slice(0, -3);
-      if (seen.has(name)) continue; // earlier dir (project) wins
-      let meta = {};
-      try { meta = parseFrontmatter(fs.readFileSync(path.join(dirs[i], entry), 'utf8')).meta; } catch {}
-      seen.set(name, { name, description: meta.description || '', source: sources[i] });
+    for (const f of readFormsDir(dirs[i])) {
+      if (seen.has(f.stem)) continue; // earlier dir (project) wins
+      seen.set(f.stem, {
+        name: f.stem,
+        description: f.meta.description || '',
+        aliases: Array.isArray(f.meta.aliases) ? f.meta.aliases : [],
+        source: sources[i],
+      });
     }
   }
   return [...seen.values()];

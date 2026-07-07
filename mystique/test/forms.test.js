@@ -106,3 +106,58 @@ test('listForms dedupes by name (project shadows global) and reports source', ()
   assert.deepStrictEqual(forms.map(f => f.name), ['a', 'b']);
   assert.strictEqual(forms[0].source, 'global');
 });
+
+test('resolveForm resolves an alias to its canonical filename stem', () => {
+  const dir = tmpClaude();
+  fs.writeFileSync(path.join(dir, 'roles', 'security-reviewer.md'),
+    `---\nname: security-reviewer\naliases: [sr, sec]\ndescription: X\n---\nB`);
+  const f = resolveForm('sr');
+  assert.strictEqual(f.name, 'security-reviewer'); // canonical, not the alias
+  assert.strictEqual(f.source, 'global');
+  assert.match(f.body, /B/);
+});
+
+test('resolveForm: exact filename wins over another form claiming it as an alias', () => {
+  const dir = tmpClaude();
+  fs.writeFileSync(path.join(dir, 'roles', 'sr.md'), `---\nname: sr\ndescription: real sr\n---\n`);
+  fs.writeFileSync(path.join(dir, 'roles', 'security-reviewer.md'),
+    `---\nname: security-reviewer\naliases: [sr]\ndescription: aliased\n---\n`);
+  const f = resolveForm('sr');
+  assert.strictEqual(f.name, 'sr');
+  assert.strictEqual(f.meta.description, 'real sr');
+});
+
+test('resolveForm: project alias shadows a global alias', () => {
+  const dir = tmpClaude();
+  const proj = fs.mkdtempSync(path.join(os.tmpdir(), 'proj-'));
+  fs.mkdirSync(path.join(proj, '.claude', 'roles'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'roles', 'global-form.md'),
+    `---\nname: global-form\naliases: [sr]\ndescription: global\n---\n`);
+  fs.writeFileSync(path.join(proj, '.claude', 'roles', 'project-form.md'),
+    `---\nname: project-form\naliases: [sr]\ndescription: project\n---\n`);
+  const cwd = process.cwd();
+  process.chdir(proj);
+  try {
+    const f = resolveForm('sr');
+    assert.strictEqual(f.name, 'project-form');
+    assert.strictEqual(f.source, 'project');
+  } finally {
+    process.chdir(cwd);
+  }
+});
+
+test('resolveForm throws when two forms in one dir claim the same alias', () => {
+  const dir = tmpClaude();
+  fs.writeFileSync(path.join(dir, 'roles', 'one.md'), `---\nname: one\naliases: [x]\n---\n`);
+  fs.writeFileSync(path.join(dir, 'roles', 'two.md'), `---\nname: two\naliases: [x]\n---\n`);
+  assert.throws(() => resolveForm('x'), /claimed by multiple forms/);
+});
+
+test('listForms exposes each form\'s aliases', () => {
+  const dir = tmpClaude();
+  fs.writeFileSync(path.join(dir, 'roles', 'a.md'), `---\nname: a\naliases: [aa, ay]\ndescription: A\n---\n`);
+  fs.writeFileSync(path.join(dir, 'roles', 'b.md'), `---\nname: b\ndescription: B\n---\n`);
+  const forms = listForms().sort((x, y) => x.name.localeCompare(y.name));
+  assert.deepStrictEqual(forms[0].aliases, ['aa', 'ay']);
+  assert.deepStrictEqual(forms[1].aliases, []); // no aliases -> empty array
+});

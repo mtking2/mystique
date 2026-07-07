@@ -5,6 +5,25 @@ All notable changes to mystique are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-07-07
+
+### Added
+
+- **Form aliases.** A form can declare `aliases: [sr, sec]` in its frontmatter;
+  any alias is accepted anywhere a form name is — `switch`, `stack`, and the
+  natural-language dispatch. `/role sr` shifts into `security-reviewer`. Session
+  state always stores the canonical filename stem, so the per-turn injection
+  re-resolves cleanly.
+- `list` now shows each form's aliases.
+
+### Resolution rules
+
+- An exact filename match always wins over an alias, so aliases can never shadow
+  a real form.
+- Aliases resolve project-first, then global (matching filename precedence). Two
+  forms in the same dir claiming one alias is an error, surfaced on use, rather
+  than a silent pick.
+
 ## [0.2.0] - 2026-06-27
 
 ### Changed

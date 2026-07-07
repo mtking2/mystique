@@ -25,6 +25,8 @@ The CLI lives at `${CLAUDE_PLUGIN_ROOT}/bin/mystique.js`. Run it with Bash: `nod
 | `/role edit <name>` | Resolve the form path (`./.claude/roles/<name>.md` or `~/.claude/roles/<name>.md`), open/Read it, and apply the edits the user asks for. |
 | "become a security reviewer" / "act as X" / "switch to X" | Map to `switch` (or `stack` if they say "also"/"as well"/"on top"). If no matching form exists, offer to `create` it. |
 
+In every `switch`/`stack` row above, `<name>` accepts either a form's filename or any of its declared `aliases` (e.g. `/role sr` → `security-reviewer`). The CLI resolves the alias and reports the canonical name.
+
 After any state change, do not narrate the injected content — the hook handles persistence. Keep confirmations to one line.
 
 ## Create wizard
@@ -33,13 +35,14 @@ Ask, one question at a time (skip optional ones the user waves off):
 
 1. Form name (kebab-case).
 2. One-line description.
-3. Principles / mindset (a few bullets).
-4. Output style.
-5. Focus — what's in scope vs out.
-6. (Optional) Recommended skills to reach for.
-7. (Optional) `tool_prefer` / `tool_avoid` (advisory).
-8. (Optional) `label` (statusline) and `spinner` verbs.
-9. Where to save: project (`./.claude/roles/<name>.md`) or global (`~/.claude/roles/<name>.md`).
+3. (Optional) Shorthand `aliases` (e.g. `sr`, `sec`) — usable anywhere the full name is.
+4. Principles / mindset (a few bullets).
+5. Output style.
+6. Focus — what's in scope vs out.
+7. (Optional) Recommended skills to reach for.
+8. (Optional) `tool_prefer` / `tool_avoid` (advisory).
+9. (Optional) `label` (statusline) and `spinner` verbs.
+10. Where to save: project (`./.claude/roles/<name>.md`) or global (`~/.claude/roles/<name>.md`).
 
 Then write the file using the frontmatter contract (flat keys; inline arrays). Keep the body tight — **target ~150 words**; it is injected every turn. Remind the user of this if their inputs run long. Use Write to create the file, then run `switch <name>` if they want to use it immediately.
 
@@ -49,6 +52,7 @@ Then write the file using the frontmatter contract (flat keys; inline arrays). K
 ---
 name: <name>
 description: <one line>
+aliases: [short, short2]            # optional shorthand for switch/stack
 label: <emoji + short label>        # optional
 tool_prefer: [Read, Grep]           # optional, advisory
 tool_avoid: [Bash]                  # optional, advisory
@@ -83,3 +87,4 @@ mystique is orthogonal to communication-style modes like **caveman**. A form def
 - Tool scope is **advisory** — the injected guidance is a nudge, not enforcement.
 - Stacking is capped at 2; `stack` exits non-zero past the cap. Relay the message.
 - Forms resolve project-first (`./.claude/roles/`) then global (`~/.claude/roles/`).
+- A form may declare `aliases: [short, ...]`. Exact filename always wins over an alias; a duplicate alias within one dir errors so the clash is visible.

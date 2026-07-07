@@ -23,28 +23,35 @@ function resyncSpinnerAfterClear() {
   if (verbs.length) spinner.applySpinner(verbs);
 }
 
+// Resolve a form name-or-alias to its canonical form; exits on collision or miss.
+function resolveOrFail(name) {
+  let f;
+  try { f = resolveForm(name); } catch (e) { fail(e.message); }
+  if (!f) fail(`No form "${name}". Run \`mystique list\` to see available forms.`);
+  return f;
+}
+
 function cmdSwitch(name) {
   if (!name) fail('Usage: mystique switch <form>');
-  const f = resolveForm(name);
-  if (!f) fail(`No form "${name}". Run \`mystique list\` to see available forms.`);
-  state.setPrimary(SESSION_ID, name, f.meta.label || '');
+  const f = resolveOrFail(name);
+  state.setPrimary(SESSION_ID, f.name, f.meta.label || '');
   syncSpinner(SESSION_ID);
-  process.stdout.write(`Shifted into ${name}${f.meta.label ? ` (${f.meta.label})` : ''}.\n`);
+  const via = f.name !== name ? ` (via "${name}")` : '';
+  process.stdout.write(`Shifted into ${f.name}${f.meta.label ? ` (${f.meta.label})` : ''}${via}.\n`);
 }
 
 function cmdStack(name) {
   if (!name) fail('Usage: mystique stack <form>');
-  const f = resolveForm(name);
-  if (!f) fail(`No form "${name}". Run \`mystique list\` to see available forms.`);
-  const already = state.readState(SESSION_ID).active.some(x => x.name === name);
+  const f = resolveOrFail(name);
+  const already = state.readState(SESSION_ID).active.some(x => x.name === f.name);
   try {
-    state.addStack(SESSION_ID, name, f.meta.label || '');
+    state.addStack(SESSION_ID, f.name, f.meta.label || '');
   } catch (e) {
     fail(e.message);
   }
   syncSpinner(SESSION_ID);
   const active = state.readState(SESSION_ID).active.map(x => x.name).join(' + ');
-  const verb = already ? `${name} already active` : `Stacked ${name}`;
+  const verb = already ? `${f.name} already active` : `Stacked ${f.name}`;
   process.stdout.write(`${verb}. Active: ${active}.\n`);
 }
 
@@ -60,7 +67,8 @@ function cmdList() {
   const active = new Set(state.readState(SESSION_ID).active.map(f => f.name));
   for (const f of forms.sort((a, b) => a.name.localeCompare(b.name))) {
     const mark = active.has(f.name) ? '* ' : '  ';
-    process.stdout.write(`${mark}${f.name}  [${f.source}]  ${f.description}\n`);
+    const aliases = f.aliases && f.aliases.length ? `  aliases: ${f.aliases.join(', ')}` : '';
+    process.stdout.write(`${mark}${f.name}  [${f.source}]${aliases}  ${f.description}\n`);
   }
 }
 

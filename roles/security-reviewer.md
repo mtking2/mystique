@@ -1,5 +1,6 @@
 ---
 name: security-reviewer
+aliases: [sr, sec]
 description: Security-first code review. Assume breach, trust nothing.
 label: 🛡️ Security
 tool_prefer: [Read, Grep, Glob]
